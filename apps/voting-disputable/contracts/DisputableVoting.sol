@@ -72,58 +72,46 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
     }
 
     struct Setting {
-        // "Base" duration of each vote -- vote lifespans may be adjusted by pause and extension durations
+
         uint64 voteTime;
 
-        // Required voter support % (yes power / voted power) for a vote to pass
-        // Expressed as a percentage of 10^18; eg. 10^16 = 1%, 10^18 = 100%
         uint64 supportRequiredPct;
 
-        // Required voter quorum % (yes power / total power) for a vote to pass
-        // Expressed as a percentage of 10^18; eg. 10^16 = 1%, 10^18 = 100%
-        // Must be <= supportRequiredPct to avoid votes being impossible to pass
         uint64 minAcceptQuorumPct;
 
-        // Duration from the start of a vote that representatives are allowed to vote on behalf of principals
-        // Must be <= voteTime; duration is bound as [)
         uint64 delegatedVotingPeriod;
 
-        // Duration before the end of a vote to detect non-quiet endings
-        // Must be <= voteTime; duration is bound as [)
         uint64 quietEndingPeriod;
 
-        // Duration to extend a vote in case of non-quiet ending
         uint64 quietEndingExtension;
 
-        // Duration to wait before a passed vote can be executed
-        // Duration is bound as [)
         uint64 executionDelay;
     }
 
     struct VoteCast {
         VoterState state;
-        address caster;                                     // Caster of the vote (only stored if caster was not the representative)
+        address caster;                                     
     }
 
     struct Vote {
-        uint256 yea;                                        // Voting power for
-        uint256 nay;                                        // Voting power against
-        uint256 totalPower;                                 // Total voting power (based on the snapshot block)
+        uint256 yea;                                        
+        uint256 nay;                                        
+        uint256 totalPower;                                 
 
-        uint64 startDate;                                   // Datetime when the vote was created
-        uint64 snapshotBlock;                               // Block number used to check voting power on attached token
-        VoteStatus status;                                  // Status of the vote
+        uint64 startDate;                                   
+        uint64 snapshotBlock;                              
+        VoteStatus status;                                 
 
-        uint256 settingId;                                  // Identification number of the setting applicable to the vote
-        uint256 actionId;                                   // Identification number of the associated disputable action on the linked Agreement
+        uint256 settingId;                                  
+        uint256 actionId;                                   
 
-        uint64 pausedAt;                                    // Datetime when the vote was paused
-        uint64 pauseDuration;                               // Duration of the pause (only updated once resumed)
-        uint64 quietEndingExtensionDuration;                // Duration a vote was extended due to non-quiet endings
-        VoterState quietEndingSnapshotSupport;              // Snapshot of the vote's support at the beginning of the first quiet ending period
+        uint64 pausedAt;                                    
+        uint64 pauseDuration;                               
+        uint64 quietEndingExtensionDuration;                
+        VoterState quietEndingSnapshotSupport;              
 
-        bytes32 executionScriptHash;                        // Hash of the EVM script attached to the vote
-        mapping (address => VoteCast) castVotes;            // Mapping of voter address => more information about their cast vote
+        bytes32 executionScriptHash;                        
+        mapping (address => VoteCast) castVotes;            
     }
 
     MiniMeToken public token;                               // Token for determining voting power; we assume it's not malicious
@@ -154,17 +142,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
     event ChangeRepresentative(address indexed voter, address indexed representative);
     event ProxyVoteFailure(uint256 indexed voteId, address indexed voter, address indexed representative);
 
-    /**
-    * @notice Initialize Disputable Voting with `_token.symbol(): string` for governance, a voting duration of `@transformTime(_voteTime)`, minimum support of `@formatPct(_supportRequiredPct)`%, minimum acceptance quorum of `@formatPct(_minAcceptQuorumPct)`%, a delegated voting period of `@transformTime(_delegatedVotingPeriod), and a execution delay of `@transformTime(_executionDelay)`
-    * @param _token MiniMeToken Address that will be used as governance token
-    * @param _voteTime Base duration a vote will be open for voting
-    * @param _supportRequiredPct Required support % (yes power / voted power) for a vote to pass; expressed as a percentage of 10^18
-    * @param _minAcceptQuorumPct Required quorum % (yes power / total power) for a vote to pass; expressed as a percentage of 10^18
-    * @param _delegatedVotingPeriod Duration from the start of a vote that representatives are allowed to vote on behalf of principals
-    * @param _quietEndingPeriod Duration to detect non-quiet endings
-    * @param _quietEndingExtension Duration to extend a vote in case of non-quiet ending
-    * @param _executionDelay Duration to wait before a passed vote can be executed
-    */
     function initialize(
         MiniMeToken _token,
         uint64 _voteTime,
@@ -191,37 +168,21 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         _changeExecutionDelay(setting, _executionDelay);
     }
 
-    /**
-    * @notice Change vote time to `@transformTime(_voteTime)`
-    * @param _voteTime New vote time
-    */
     function changeVoteTime(uint64 _voteTime) external authP(CHANGE_VOTE_TIME_ROLE, arr(uint256(_voteTime))) {
         Setting storage setting = _newCopiedSettings();
         _changeVoteTime(setting, _voteTime);
     }
 
-    /**
-    * @notice Change required support to `@formatPct(_supportRequiredPct)`%
-    * @param _supportRequiredPct New required support; expressed as a percentage of 10^18
-    */
     function changeSupportRequiredPct(uint64 _supportRequiredPct) external authP(CHANGE_SUPPORT_ROLE, arr(uint256(_supportRequiredPct))) {
         Setting storage setting = _newCopiedSettings();
         _changeSupportRequiredPct(setting, _supportRequiredPct);
     }
 
-    /**
-    * @notice Change minimum acceptance quorum to `@formatPct(_minAcceptQuorumPct)`%
-    * @param _minAcceptQuorumPct New minimum acceptance quorum; expressed as a percentage of 10^18
-    */
     function changeMinAcceptQuorumPct(uint64 _minAcceptQuorumPct) external authP(CHANGE_QUORUM_ROLE, arr(uint256(_minAcceptQuorumPct))) {
         Setting storage setting = _newCopiedSettings();
         _changeMinAcceptQuorumPct(setting, _minAcceptQuorumPct);
     }
 
-    /**
-    * @notice Change delegated voting period to `@transformTime(_delegatedVotingPeriod)`
-    * @param _delegatedVotingPeriod New delegated voting period
-    */
     function changeDelegatedVotingPeriod(uint64 _delegatedVotingPeriod)
         external
         authP(CHANGE_DELEGATED_VOTING_PERIOD_ROLE, arr(uint256(_delegatedVotingPeriod)))
@@ -230,11 +191,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         _changeDelegatedVotingPeriod(setting, _delegatedVotingPeriod);
     }
 
-    /**
-    * @notice Change quiet ending period to `@transformTime(_quietEndingPeriod)` with extensions of `@transformTime(_quietEndingExtension)`
-    * @param _quietEndingPeriod New quiet ending period
-    * @param _quietEndingExtension New quiet ending extension
-    */
     function changeQuietEndingConfiguration(uint64 _quietEndingPeriod, uint64 _quietEndingExtension)
         external
         authP(CHANGE_QUIET_ENDING_ROLE, arr(uint256(_quietEndingPeriod), uint256(_quietEndingExtension)))
@@ -243,32 +199,15 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         _changeQuietEndingConfiguration(setting, _quietEndingPeriod, _quietEndingExtension);
     }
 
-    /**
-    * @notice Change execution delay to `@transformTime(_executionDelay)`
-    * @param _executionDelay New execution delay
-    */
     function changeExecutionDelay(uint64 _executionDelay) external authP(CHANGE_EXECUTION_DELAY_ROLE, arr(uint256(_executionDelay))) {
         Setting storage setting = _newCopiedSettings();
         _changeExecutionDelay(setting, _executionDelay);
     }
 
-    /**
-    * @notice Create a new vote about "`_context`"
-    * @param _executionScript Action (encoded as an EVM script) that will be allowed to execute if the vote passes
-    * @param _context Additional context for the vote, also used as the disputable action's context on the linked Agreement
-    * @return Identification number of the newly created vote
-    */
     function newVote(bytes _executionScript, bytes _context) external auth(CREATE_VOTES_ROLE) returns (uint256) {
         return _newVote(_executionScript, _context);
     }
 
-    /**
-    * @notice Vote `_supports ? 'yes' : 'no'` in vote #`_voteId`
-    * @dev Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote
-    * @param _supports Whether voter supports the vote
-    */
     function vote(uint256 _voteId, bool _supports) external {
         Vote storage vote_ = _getVote(_voteId);
         require(_canVote(vote_, msg.sender), ERROR_CANNOT_VOTE);
@@ -276,14 +215,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         _castVote(vote_, _voteId, _supports, msg.sender, address(0));
     }
 
-    /**
-    * @notice Vote `_supports ? 'yes' : 'no'` in vote #`_voteId` on behalf of delegated voters
-    * @dev Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote
-    * @param _supports Whether the representative supports the vote
-    * @param _voters Addresses of the delegated voters to vote on behalf of
-    */
     function voteOnBehalfOf(uint256 _voteId, bool _supports, address[] _voters) external {
         require(_voters.length <= MAX_VOTES_DELEGATION_SET_LENGTH, ERROR_DELEGATES_EXCEEDS_MAX_LEN);
 
@@ -305,13 +236,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         }
     }
 
-    /**
-    * @notice Execute vote #`_voteId`
-    * @dev Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote
-    * @param _executionScript Action (encoded as an EVM script) to be executed, must match the one used when the vote was created
-    */
     function executeVote(uint256 _voteId, bytes _executionScript) external {
         Vote storage vote_ = _getVote(_voteId);
         require(_canExecute(vote_), ERROR_CANNOT_EXECUTE);
@@ -327,10 +251,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         emit ExecuteVote(_voteId);
     }
 
-    /**
-    * @notice `_representative == 0x0 ? 'Set your voting representative to ' + _representative : 'Remove your representative'`
-    * @param _representative Address of the representative who is allowed to vote on behalf of the sender. Use the zero address for none.
-    */
     function setRepresentative(address _representative) external isInitialized {
         representatives[msg.sender] = _representative;
         emit ChangeRepresentative(msg.sender, _representative);
@@ -338,13 +258,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
 
     // Forwarding external fns
 
-    /**
-    * @notice Create a vote to execute the desired action
-    * @dev IForwarderWithContext interface conformance.
-    *      This app (as a DisputableAragonApp) is required to be the initial step in the forwarding chain.
-    * @param _evmScript Action (encoded as an EVM script) that will be allowed to execute if the vote passes
-    * @param _context Additional context for the vote, also used as the disputable action's context on the linked Agreement
-    */
     function forward(bytes _evmScript, bytes _context) external {
         require(_canForward(msg.sender, _evmScript), ERROR_CANNOT_FORWARD);
         _newVote(_evmScript, _context);
@@ -352,25 +265,12 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
 
     // Forwarding getter fns
 
-    /**
-    * @dev Tell if an address can forward actions (by creating a vote)
-    *      IForwarderWithContext interface conformance
-    * @param _sender Address intending to forward an action
-    * @param _evmScript EVM script being forwarded
-    * @return True if the address is allowed create a vote containing the action
-    */
     function canForward(address _sender, bytes _evmScript) external view returns (bool) {
         return _canForward(_sender, _evmScript);
     }
 
     // Disputable getter fns
 
-    /**
-    * @dev Tell if a vote can be challenged
-    *      Called by the linked Agreement when a challenge is requested for the associated vote
-    * @param _voteId Identification number of the vote being queried
-    * @return True if the vote can be challenged
-    */
     function canChallenge(uint256 _voteId) external view returns (bool) {
         Vote storage vote_ = _getVote(_voteId);
         // Votes can only be challenged once
@@ -390,19 +290,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
 
     // Getter fns
 
-    /**
-    * @dev Tell the information for a setting
-    *      Initialization check is implicitly provided by `_getSetting()` as new settings can only be
-    *      created via `change*()` functions which require initialization
-    * @param _settingId Identification number of the setting
-    * @return voteTime Base vote duration
-    * @return supportRequiredPct Required support % (yes power / voted power) for a vote to pass; expressed as a percentage of 10^18
-    * @return minAcceptQuorumPct Required quorum % (yes power / total power) for a vote to pass; expressed as a percentage of 10^18
-    * @return delegatedVotingPeriod Duration of the delegated voting period
-    * @return quietEndingPeriod Duration to detect non-quiet endings
-    * @return quietEndingExtension Duration to extend a vote in case of non-quiet ending
-    * @return executionDelay Duration to wait before a passed vote can be executed
-    */
     function getSetting(uint256 _settingId)
         external
         view
@@ -426,25 +313,6 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         executionDelay = setting.executionDelay;
     }
 
-    /**
-    * @dev Tell the information for a vote
-    *      Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote
-    * @return yea Voting power for
-    * @return nay Voting power against
-    * @return totalPower Total voting power available (based on the snapshot block)
-    * @return startDate Datetime when the vote was created
-    * @return snapshotBlock Block number used to check voting power on attached token
-    * @return status Status of the vote
-    * @return settingId Identification number of the setting applicable to the vote
-    * @return actionId Identification number of the associated disputable action on the linked Agreement
-    * @return pausedAt Datetime when the vote was paused
-    * @return pauseDuration Duration of the pause (only updated once resumed)
-    * @return quietEndingExtensionDuration Duration a vote was extended due to non-quiet endings
-    * @return quietEndingSnapshotSupport Snapshot of the vote's support at the beginning of the first quiet ending period
-    * @return executionScriptHash Hash of the EVM script attached to the vote
-    */
     function getVote(uint256 _voteId)
         external
         view
@@ -481,42 +349,16 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         executionScriptHash = vote_.executionScriptHash;
     }
 
-    /**
-    * @dev Tell the state of a voter for a vote
-    *      Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote
-    * @param _voter Address of the voter being queried
-    * @return state Voter's cast state being queried
-    * @return caster Address of the vote's caster
-    */
     function getCastVote(uint256 _voteId, address _voter) external view returns (VoterState state, address caster) {
         Vote storage vote_ = _getVote(_voteId);
         state = _voterState(vote_, _voter);
         caster = _voteCaster(vote_, _voter);
     }
 
-    /**
-    * @dev Tell if a voter can participate in a vote
-    *      Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote being queried
-    * @param _voter Address of the voter being queried
-    * @return True if the voter can participate in the vote
-    */
     function canVote(uint256 _voteId, address _voter) external view returns (bool) {
         return _canVote(_getVote(_voteId), _voter);
     }
 
-    /**
-    * @dev Tell if a representative can vote on behalf of delegated voters in a vote
-    *      Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote being queried
-    * @param _voters Addresses of the delegated voters being queried
-    * @param _representative Address of the representative being queried
-    * @return True if the representative can vote on behalf of the delegated voters in the vote
-    */
     function canVoteOnBehalfOf(uint256 _voteId, address[] _voters, address _representative) external view returns (bool) {
         require(_voters.length <= MAX_VOTES_DELEGATION_SET_LENGTH, ERROR_DELEGATES_EXCEEDS_MAX_LEN);
 
@@ -535,48 +377,21 @@ contract DisputableVoting is IForwarderWithContext, DisputableAragonApp {
         return true;
     }
 
-    /**
-    * @dev Tell if a vote can be executed
-    *      Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote being queried
-    * @return True if the vote can be executed
-    */
     function canExecute(uint256 _voteId) external view returns (bool) {
         return _canExecute(_getVote(_voteId));
     }
 
-    /**
-    * @dev Tell if a vote is open for voting
-    *      Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Identification number of the vote being queried
-    * @return True if the vote is open for voting
-    */
     function isVoteOpenForVoting(uint256 _voteId) external view returns (bool) {
         Vote storage vote_ = _getVote(_voteId);
         Setting storage setting = settings[vote_.settingId];
         return _isVoteOpenForVoting(vote_, setting);
     }
 
-    /**
-    * @dev Tell if a vote currently allows representatives to vote for delegated voters
-    *      Initialization check is implicitly provided by `_getVote()` as new votes can only be
-    *      created via `newVote()`, which requires initialization
-    * @param _voteId Vote identifier
-    * @return True if the vote currently allows representatives to vote
-    */
     function canRepresentativesVote(uint256 _voteId) external view returns (bool) {
         Vote storage vote_ = _getVote(_voteId);
         return _canRepresentativesVote(vote_);
     }
 
-    /**
-    * @dev Tell if a representative currently represents another voter
-    * @param _voter Address of the delegated voter being queried
-    * @param _representative Address of the representative being queried
-    * @return True if the representative currently represents the voter
-    */
     function isRepresentativeOf(address _voter, address _representative) external view isInitialized returns (bool) {
         return _isRepresentativeOf(_voter, _representative);
     }

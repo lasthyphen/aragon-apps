@@ -26,6 +26,11 @@
       "appName": "minime-factory.aragonpm.eth",
       "network": "rinkeby"
     },
+    "dijets": {
+      "registry": "0x988ef24e3e51308da71f44176f094ebaf18de78a",
+      "appName": "minime-factory.aragonpm.eth",
+      "network": "dijets"
+    },
     "ropsten": {
       "registry": "0x6afe2cacee211ea9179992f89dc61ff25c61e923",
       "appName": "minime-factory.aragonpm.eth",
@@ -60,11 +65,6 @@
       "registry": "0x843ddfab8406e752d03fa75dbb275070f368658d",
       "appName": "minime-factory.aragonpm.eth",
       "network": "bscTest"
-    },
-    "goerli": {
-      "registry": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
-      "appName": "minime-factory.aragonpm.eth",
-      "network": "goerli"
     }
   },
   "roles": []

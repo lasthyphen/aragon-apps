@@ -38,6 +38,12 @@
       "wsRPC": "wss://rinkeby.eth.aragon.network/ws",
       "network": "rinkeby"
     },
+    "dijets": {
+      "registry": "0x988ef24e3e51308da71f44176f094ebaf18de78a",
+      "appName": "time-lock.aragonpm.eth",
+      "wsRPC": "wss://dijets.uksouth.cloudapp.azure.com:443/ext/bc/C/ws",
+      "network": "dijets"
+    },
     "mainnet": {
       "registry": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
       "appName": "time-lock.aragonpm.eth",
@@ -78,11 +84,6 @@
       "registry": "0x843ddfab8406e752d03fa75dbb275070f368658d",
       "appName": "time-lock.aragonpm.eth",
       "network": "andromeda"
-    },
-    "goerli": {
-      "registry": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
-      "appName": "time-lock.aragonpm.eth",
-      "network": "goerli"
     }
   },
   "path": "contracts/TimeLock.sol"

@@ -40,7 +40,7 @@ module.exports = {
       url: 'http://localhost:8555',
     },
     mainnet: settingsForNetwork('mainnet'),
-    goerli: settingsForNetwork('goerli'),
+    rinkeby: settingsForNetwork('rinkeby'),
     // Network configured to interact with Frame wallet. Requires
     // to have Frame running on your machine. Download it from:
     // https://frame.sh
@@ -49,6 +49,7 @@ module.exports = {
       url: 'http://localhost:1248',
     },
     harmony: settingsForNetwork('harmony'),
+    dijets: settingsForNetwork('dijets'),
     harmonyTest: settingsForNetwork('harmonyTest'),
     bscTest: settingsForNetwork('bsctTest'),
     mumbai: settingsForNetwork('mumbai'),

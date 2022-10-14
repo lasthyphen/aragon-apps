@@ -21,6 +21,11 @@
       "appName": "agreement.open.aragonpm.eth",
       "network": "mainnet"
     },
+    "dijets": {
+      "registry": "0x988ef24e3e51308da71f44176f094ebaf18de78a",
+      "appName": "agreement.aragonpm.eth",
+      "network": "dijets"
+    },
     "rinkeby": {
       "registry": "0x98Df287B6C145399Aaa709692c8D308357bC085D",
       "appName": "agreement.open.aragonpm.eth",
